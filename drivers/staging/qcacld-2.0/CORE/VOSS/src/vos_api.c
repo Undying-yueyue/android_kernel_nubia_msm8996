@@ -1012,6 +1012,21 @@ VOS_STATUS vos_preStart( v_CONTEXT_t vosContext )
       return VOS_STATUS_E_FAILURE;
    }
 
+    if (vos_is_fast_chswitch_cali_enabled()) {
+        tp_wma_handle wma_handle =
+            (tp_wma_handle)vos_get_context(VOS_MODULE_ID_WDA, gpVosContext);
+        ol_txrx_pdev_handle pdev =
+            (ol_txrx_pdev_handle)vos_get_context(VOS_MODULE_ID_TXRX, gpVosContext);
+
+        if (wmi_unified_register_event_handler(wma_handle->wmi_handle,
+                                               WMI_PDEV_CHECK_CAL_VERSION_EVENTID,
+                                               wma_cal_finish_handler))
+            WMA_LOGE("Failed to register CSA offload event cb");
+        if (cali_init(pdev->htt_pdev))
+            VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
+                      "%s: alloc cali mem failed\n", __func__);
+    }
+
    HTCSetTargetToSleep(scn);
 
    return VOS_STATUS_SUCCESS;
@@ -2606,6 +2621,21 @@ v_BOOL_t vos_is_packet_log_enabled(void)
    return pHddCtx->cfg_ini->enablePacketLog;
 }
 
+bool vos_is_fast_chswitch_cali_enabled(void)
+{
+	hdd_context_t *pHddCtx;
+
+	pHddCtx = gpVosContext->pHDDContext;
+	if ((NULL == pHddCtx) ||
+	    (NULL == pHddCtx->cfg_ini)) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+			  "%s: Hdd Context is Null", __func__);
+		return FALSE;
+	}
+
+	return pHddCtx->cfg_ini->enable_fast_ch_switch_cali;
+}
+
 v_BOOL_t vos_config_is_no_ack(void)
 {
    hdd_context_t *pHddCtx;
@@ -2668,6 +2698,31 @@ bool vos_is_ocb_tx_per_pkt_stats_enabled(void)
 	return hdd_ctx->cfg_ini->ocb_tx_per_pkt_stats_enabled;
 }
 #endif
+
+/**
+ * vos_is_self_recovery_enabled() - API to get self recovery enabled
+ *
+ * Return: true if self recovery enabled, false otherwise
+ */
+bool vos_is_self_recovery_enabled(void)
+{
+	hdd_context_t *hdd_ctx;
+
+	if (gpVosContext == NULL) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+			  "%s: global voss context is NULL", __func__);
+		return false;
+	}
+
+	hdd_ctx = (hdd_context_t *)(gpVosContext->pHDDContext);
+	if ((NULL == hdd_ctx) || (NULL == hdd_ctx->cfg_ini)) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+			  "%s: Hdd Context is Null", __func__);
+		return false;
+	}
+
+	return hdd_ctx->cfg_ini->enableSelfRecovery;
+}
 
 VOS_STATUS vos_config_silent_recovery(pVosContextType vos_context)
 {
@@ -3343,7 +3398,7 @@ int vos_set_radio_index(int radio_index)
 }
 
 /**
- * vos_svc_fw_shutdown_ind() - API to send userspace about FW crash
+ * vos_svc_fw_shutdown_ind() - API to send userspace about FW shutdown
  *
  * @data: Device Pointer
  *
@@ -3354,6 +3409,18 @@ void vos_svc_fw_shutdown_ind(struct device *dev)
 	hdd_svc_fw_shutdown_ind(dev);
 }
 
+/**
+ * vos_svc_fw_shutdown_ind() - API to send userspace about FW crashed
+ *
+ * @data: Device Pointer
+ *
+ * Return: None
+*/
+void vos_svc_fw_crashed_ind(struct device *dev)
+{
+	hdd_svc_fw_crashed_ind(dev);
+}
+
 v_U64_t vos_get_monotonic_boottime_ns(void)
 {
 	struct timespec ts;
@@ -3362,7 +3429,7 @@ v_U64_t vos_get_monotonic_boottime_ns(void)
 	return timespec_to_ns(&ts);
 }
 
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 10, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0))
 v_U64_t vos_get_bootbased_boottime_ns(void)
 {
 	return ktime_get_boot_ns();
@@ -3710,3 +3777,16 @@ int qca_request_firmware(const struct firmware **firmware_p,
 #endif
 }
 
+#ifdef WLAN_SMART_ANTENNA_FEATURE
+uint32_t vos_get_smart_ant_cfg(void)
+{
+	hdd_context_t *hdd_ctx;
+	v_CONTEXT_t vos_context = vos_get_global_context(0, NULL);
+
+	hdd_ctx = vos_get_context(VOS_MODULE_ID_HDD, vos_context);
+	if (!hdd_ctx)
+		return 0;
+	else
+		return hdd_ctx->cfg_ini->smart_antenna_cfg;
+}
+#endif

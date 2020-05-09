@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2019 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -85,7 +85,7 @@ void hdd_softap_tkip_mic_fail_counter_measure(hdd_adapter_t*,v_BOOL_t);
 int hdd_softap_unpackIE( tHalHandle halHandle,
                 eCsrEncryptionType *pEncryptType,
                 eCsrEncryptionType *mcEncryptType,
-                eCsrAuthType *pAuthType,
+                tCsrAuthList *akm_list,
                 v_BOOL_t *pMFPCapable,
                 v_BOOL_t *pMFPRequired,
                 u_int16_t gen_ie_len,
@@ -244,7 +244,7 @@ bool hdd_hostapd_sub20_channelwidth_can_restore(
 bool hdd_sub20_channelwidth_can_set(
 	hdd_adapter_t *adapter, uint32_t sub20_channel_width);
 int hdd_softap_set_channel_sub20_chanwidth_change(
-	struct net_device *dev, uint32_t chan_width);
+	struct net_device *dev, uint32_t chan_width, int target_channel);
 #else
 static inline bool hdd_hostapd_sub20_channelwidth_can_switch(
 	hdd_adapter_t *adapter, uint32_t *sub20_channel_width)
@@ -266,7 +266,7 @@ static inline bool hdd_sub20_channelwidth_can_set(
 
 static inline
 int hdd_softap_set_channel_sub20_chanwidth_change(
-	struct net_device *dev, uint32_t chan_width)
+	struct net_device *dev, uint32_t chan_width, int target_channel)
 {
 	return -ENOTSUPP;
 }

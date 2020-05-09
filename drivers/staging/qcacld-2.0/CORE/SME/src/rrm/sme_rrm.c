@@ -323,7 +323,7 @@ static eHalStatus sme_EseSendBeaconReqScanResults(tpAniSirGlobal pMac,
    tCsrScanResultInfo     *pCurResult     = NULL;
    tANI_U8                 msgCounter     = 0;
    tpRrmSMEContext         pSmeRrmContext = &pMac->rrm.rrmSmeContext;
-   tCsrRoamInfo            roamInfo;
+   tCsrRoamInfo            *roam_info;
    tSirEseBcnReportRsp     bcnReport;
    tpSirEseBcnReportRsp    pBcnReport     = &bcnReport;
    tpCsrEseBeaconReqParams pCurMeasReqIe  = NULL;
@@ -341,6 +341,9 @@ static eHalStatus sme_EseSendBeaconReqScanResults(tpAniSirGlobal pMac,
       return eHAL_STATUS_FAILURE;
    }
 
+   roam_info = vos_mem_malloc(sizeof(*roam_info));
+   if (!roam_info)
+      return eHAL_STATUS_FAILED_ALLOC;
    if (pResultArr)
        pCurResult=pResultArr[bssCounter];
 
@@ -430,8 +433,8 @@ static eHalStatus sme_EseSendBeaconReqScanResults(tpAniSirGlobal pMac,
                " msgCounter(%d) bssCounter(%d) flag(%d)",
                 pBcnReport->numBss, msgCounter, bssCounter, pBcnReport->flag);
 
-       roamInfo.pEseBcnReportRsp = pBcnReport;
-       status = csrRoamCallCallback(pMac, sessionId, &roamInfo,
+       roam_info->pEseBcnReportRsp = pBcnReport;
+       status = csrRoamCallCallback(pMac, sessionId, roam_info,
                            0, eCSR_ROAM_ESE_BCN_REPORT_IND, 0);
 
        /* Free the memory allocated to IE */
@@ -441,6 +444,8 @@ static eHalStatus sme_EseSendBeaconReqScanResults(tpAniSirGlobal pMac,
                vos_mem_free(pBcnReport->bcnRepBssInfo[i].pBuf);
        }
    } while (pCurResult);
+   vos_mem_free(roam_info);
+
    return status;
 }
 
@@ -937,6 +942,12 @@ eHalStatus sme_RrmProcessBeaconReportReqInd(tpAniSirGlobal pMac, void *pMsgBuf)
 #if defined WLAN_VOWIFI_DEBUG
    smsLog( pMac, LOGE, "Received Beacon report request ind Channel = %d", pBeaconReq->channelInfo.channelNum );
 #endif
+
+   if (pBeaconReq->channelList.numChannels > SIR_ESE_MAX_MEAS_IE_REQS) {
+         smsLog( pMac, LOGP, "Beacon report request numChannels: %u exceeds "
+                "max num channels", pBeaconReq->channelList.numChannels);
+         return eHAL_STATUS_FAILURE;
+   }
    //section 11.10.8.1 (IEEE Std 802.11k-2008)
    //channel 0 and 255 has special meaning.
    if( (pBeaconReq->channelInfo.channelNum == 0)  ||
