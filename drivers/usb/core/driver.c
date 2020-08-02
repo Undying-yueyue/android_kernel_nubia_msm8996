@@ -283,7 +283,7 @@ static int usb_probe_interface(struct device *dev)
 	struct usb_device *udev = interface_to_usbdev(intf);
 	const struct usb_device_id *id;
 	int error = -ENODEV;
-	int lpm_disable_error = -ENODEV;
+	int lpm_disable_error;
 
 	dev_dbg(dev, "%s\n", __func__);
 
@@ -501,7 +501,8 @@ int usb_driver_claim_interface(struct usb_driver *driver,
 	struct device *dev;
 	struct usb_device *udev;
 	int retval = 0;
-
+    int lpm_disable_error;
+    
 	if (!iface)
 		return -ENODEV;
 
@@ -535,20 +536,9 @@ int usb_driver_claim_interface(struct usb_driver *driver,
 	if (device_is_registered(dev))
 		retval = device_bind_driver(dev);
 
-	if (retval) {
-		dev->driver = NULL;
-		usb_set_intfdata(iface, NULL);
-		iface->needs_remote_wakeup = 0;
-		iface->condition = USB_INTERFACE_UNBOUND;
-
-		/*
-		 * Unbound interfaces are always runtime-PM-disabled
-		 * and runtime-PM-suspended
-		 */
-		if (driver->supports_autosuspend)
-			pm_runtime_disable(dev);
-		pm_runtime_set_suspended(dev);
-	}
+	/* Attempt to re-enable USB3 LPM, if the disable was successful. */
+	if (!lpm_disable_error)
+		usb_unlocked_enable_lpm(udev);
 
 	return retval;
 }

@@ -1095,7 +1095,7 @@ static ssize_t bmi160_fifo_data_sel_store(struct device *dev,
 	err += BMI_CALL_API(set_command_register)(CMD_CLR_FIFO_DATA);
 
 	if (err)
-		return -EIO;
+		return -EIO;drivers/i2c/busses/i2c-msm-v2.c/
 	else {
 		dev_notice(client_data->dev, "FIFO A_en:%d, G_en:%d, M_en:%d\n",
 			(fifo_datasel & (1 << BMI_ACC_SENSOR)) ? 1 :  0,
@@ -1123,7 +1123,9 @@ static int bmi160_report_accel_data(struct iio_dev *indio_dev,
 #endif
 
 	store_acc_boot_sample(acc.x, acc.y, acc.z);
+	mutex_lock(&indio_dev->mlock);
 	iio_push_to_buffers(indio_dev, buf_16);
+	mutex_unlock(&indio_dev->mlock);
 
 	return 0;
 }
@@ -1142,7 +1144,9 @@ static int bmi160_report_gyro_data(struct iio_dev *indio_dev,
 #endif
 
 	store_gyro_boot_sample(gyro.x, gyro.y, gyro.z);
+	mutex_lock(&indio_dev->mlock);
 	iio_push_to_buffers(indio_dev, buf_16);
+	mutex_unlock(&indio_dev->mlock);
 
 	return 0;
 }

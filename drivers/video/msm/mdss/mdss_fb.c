@@ -3401,108 +3401,112 @@ static void mdss_fb_update_resolution(struct msm_fb_data_type *mfd,
 }
 
 int mdss_fb_atomic_commit(struct fb_info *info,
-	struct mdp_layer_commit  *commit, struct file *file)
-{
-	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
-	struct mdp_layer_commit_v1 *commit_v1;
-	struct mdp_output_layer *output_layer;
-	struct mdss_panel_info *pinfo;
-	bool wait_for_finish, wb_change = false;
-	int ret = -EPERM;
-	u32 old_xres = 0, old_yres = 0, old_format = 0;
-
-	if (!mfd || (!mfd->op_enable)) {
-		pr_err("mfd is NULL or operation not permitted\n");
-		return -EPERM;
-	}
-
-	if ((mdss_fb_is_power_off(mfd)) &&
-		!((mfd->dcm_state == DCM_ENTER) &&
-		(mfd->panel.type == MIPI_CMD_PANEL))) {
-		pr_err("commit is not supported when interface is in off state\n");
-		return ret;
-	}
-	pinfo = mfd->panel_info;
-
-	/* only supports version 1.0 */
-	if (commit->version != MDP_COMMIT_VERSION_1_0) {
-		pr_err("commit version is not supported\n");
-		return ret;
-	}
-
-	if (!mfd->mdp.pre_commit || !mfd->mdp.atomic_validate) {
-		pr_err("commit callback is not registered\n");
-		return ret;
-	}
-
-	commit_v1 = &commit->commit_v1;
-	if (commit_v1->flags & MDP_VALIDATE_LAYER) {
-		ret = mdss_fb_wait_for_kickoff(mfd);
-		if (ret) {
-			pr_err("wait for kickoff failed, ret: %d\n", ret);
-		} else {
-			__ioctl_transition_dyn_mode_state(mfd,
-				MSMFB_ATOMIC_COMMIT, true, false);
-			if (mfd->panel.type == WRITEBACK_PANEL) {
-				if (!commit_v1->output_layer) {
-					pr_err("Output layer is null\n");
-					return ret;
+		struct mdp_layer_commit  *commit, struct file *file)
+	{
+		struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+		struct mdp_layer_commit_v1 *commit_v1;
+		struct mdp_output_layer *output_layer;
+		struct mdss_panel_info *pinfo;
+		bool wait_for_finish, update = false, wb_change = false;
+		int ret = -EPERM;
+		u32 old_xres, old_yres, old_format;
+	
+		if (!mfd || (!mfd->op_enable)) {
+			pr_err("mfd is NULL or operation not permitted\n");
+			return -EPERM;
+		}
+	
+		if ((mdss_fb_is_power_off(mfd)) &&
+			!((mfd->dcm_state == DCM_ENTER) &&
+			(mfd->panel.type == MIPI_CMD_PANEL))) {
+			pr_err("commit is not supported when interface is in off state\n");
+			goto end;
+		}
+		pinfo = mfd->panel_info;
+	
+		/* only supports version 1.0 */
+		if (commit->version != MDP_COMMIT_VERSION_1_0) {
+			pr_err("commit version is not supported\n");
+			goto end;
+		}
+	
+		if (!mfd->mdp.pre_commit || !mfd->mdp.atomic_validate) {
+			pr_err("commit callback is not registered\n");
+			goto end;
+		}
+	
+		commit_v1 = &commit->commit_v1;
+		if (commit_v1->flags & MDP_VALIDATE_LAYER) {
+			ret = mdss_fb_wait_for_kickoff(mfd);
+			if (ret) {
+				pr_err("wait for kickoff failed\n");
+			} else {
+				__ioctl_transition_dyn_mode_state(mfd,
+					MSMFB_ATOMIC_COMMIT, true, false);
+				if (mfd->panel.type == WRITEBACK_PANEL) {
+					if (!commit_v1->output_layer) {
+						pr_err("Output layer is null\n");
+						goto end;
+					}
+					output_layer = commit_v1->output_layer;
+					wb_change = !mdss_fb_is_wb_config_same(mfd,
+							output_layer);
+					if (wb_change) {
+						old_xres = pinfo->xres;
+						old_yres = pinfo->yres;
+						old_format = mfd->fb_imgType;
+						mdss_fb_update_resolution(mfd,
+							output_layer->buffer.width,
+							output_layer->buffer.height,
+							output_layer->buffer.format);
+						update = true;
+					}
 				}
-				output_layer = commit_v1->output_layer;
-				wb_change = !mdss_fb_is_wb_config_same(mfd,
-						output_layer);
-				if (wb_change) {
-					old_xres = pinfo->xres;
-					old_yres = pinfo->yres;
-					old_format = mfd->fb_imgType;
-					mdss_fb_update_resolution(mfd,
-						output_layer->buffer.width,
-						output_layer->buffer.height,
-						output_layer->buffer.format);
-				}
+				ret = mfd->mdp.atomic_validate(mfd, file, commit_v1);
+				if (!ret)
+					mfd->atomic_commit_pending = true;
+	
+	
+	
 			}
-			ret = mfd->mdp.atomic_validate(mfd, file, commit_v1);
-			if (!ret)
-				mfd->atomic_commit_pending = true;
-			else if (wb_change)
-				mdss_fb_update_resolution(mfd, old_xres,
-							old_yres, old_format);
+			goto end;
+		} else {
+			ret = mdss_fb_pan_idle(mfd);
+			if (ret) {
+				pr_err("pan display idle call failed\n");
+				goto end;
+			}
+			__ioctl_transition_dyn_mode_state(mfd,
+				MSMFB_ATOMIC_COMMIT, false,
+				(commit_v1->input_layer_cnt ? 0 : 1));
+	
+			ret = mfd->mdp.pre_commit(mfd, file, commit_v1);
+			if (ret) {
+				pr_err("atomic pre commit failed\n");
+				goto end;
+			}
 		}
+	
+		wait_for_finish = commit_v1->flags & MDP_COMMIT_WAIT_FOR_FINISH;
+		mfd->msm_fb_backup.atomic_commit = true;
+		mfd->msm_fb_backup.disp_commit.l_roi =  commit_v1->left_roi;
+		mfd->msm_fb_backup.disp_commit.r_roi =  commit_v1->right_roi;
+	
+		mutex_lock(&mfd->mdp_sync_pt_data.sync_mutex);
+		atomic_inc(&mfd->mdp_sync_pt_data.commit_cnt);
+		atomic_inc(&mfd->commits_pending);
+		atomic_inc(&mfd->kickoff_pending);
+		wake_up_all(&mfd->commit_wait_q);
+		mutex_unlock(&mfd->mdp_sync_pt_data.sync_mutex);
+	
+		if (wait_for_finish)
+			ret = mdss_fb_pan_idle(mfd);
+	
+	end:
+		if (update && ret && (mfd->panel.type == WRITEBACK_PANEL) && wb_change)
+			mdss_fb_update_resolution(mfd, old_xres, old_yres, old_format);
 		return ret;
-	} else {
-		ret = mdss_fb_pan_idle(mfd);
-		if (ret) {
-			pr_err("pan display idle call failed, ret: %d\n", ret);
-			return ret;
-		}
-		__ioctl_transition_dyn_mode_state(mfd,
-			MSMFB_ATOMIC_COMMIT, false,
-			(commit_v1->input_layer_cnt ? 0 : 1));
-
-		ret = mfd->mdp.pre_commit(mfd, file, commit_v1);
-		if (ret) {
-			pr_err("atomic pre commit failed, ret: %d\n", ret);
-			return ret;
-		}
 	}
-
-	wait_for_finish = commit_v1->flags & MDP_COMMIT_WAIT_FOR_FINISH;
-	mfd->msm_fb_backup.atomic_commit = true;
-	mfd->msm_fb_backup.disp_commit.l_roi =  commit_v1->left_roi;
-	mfd->msm_fb_backup.disp_commit.r_roi =  commit_v1->right_roi;
-
-	mutex_lock(&mfd->mdp_sync_pt_data.sync_mutex);
-	atomic_inc(&mfd->mdp_sync_pt_data.commit_cnt);
-	atomic_inc(&mfd->commits_pending);
-	atomic_inc(&mfd->kickoff_pending);
-	wake_up_all(&mfd->commit_wait_q);
-	mutex_unlock(&mfd->mdp_sync_pt_data.sync_mutex);
-
-	if (wait_for_finish)
-		ret = mdss_fb_pan_idle(mfd);
-
-	return ret;
-}
 
 static int mdss_fb_pan_display(struct fb_var_screeninfo *var,
 		struct fb_info *info)
