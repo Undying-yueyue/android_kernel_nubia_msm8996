@@ -117,8 +117,8 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 	else
 		bdata->bus_reg_name = name;
 
-		bdata->power_gpio = of_get_named_gpio_flags(np,
-				"synaptics,power-gpio", 0, NULL);
+	bdata->power_gpio = of_get_named_gpio_flags(np,
+		"synaptics,power-gpio", 0, NULL);
 	if (bdata->power_gpio < 0){
 		bdata->power_gpio = -1;
 		pr_err("[TP]%s: can't get synaptics power-gpio !\n", __func__);

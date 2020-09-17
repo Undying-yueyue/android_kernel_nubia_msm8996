@@ -166,7 +166,7 @@ static ssize_t reg_data_show(struct device *dev,
         struct device_attribute *attr, char *buf)
 {
     int ret, i, fpt;
-    int rx[22];
+    int rx[23];
 
     mutex_lock(&io_lock);
     for (i = 0; i < AK4376_16_DUMMY; i++) {
