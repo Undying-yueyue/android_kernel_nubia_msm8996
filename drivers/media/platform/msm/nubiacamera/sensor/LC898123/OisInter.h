@@ -24,7 +24,7 @@
 struct msm_ois_ctrl_t {
 	struct msm_camera_i2c_client i2c_client;
 	enum af_camera_name cam_name;
-      enum msm_actuator_data_type i2c_data_type;
+      enum msm_camera_i2c_data_type i2c_data_type;
 	enum cci_i2c_master_t cci_master;
 };
 
