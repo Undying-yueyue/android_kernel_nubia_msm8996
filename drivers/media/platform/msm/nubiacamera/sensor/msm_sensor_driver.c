@@ -790,7 +790,7 @@ int32_t msm_sensor_driver_probe(void *setting,
 
 	// ZTEMT: fuyipeng add for support 4lane imx179 ---start
 	if(slave_info->camera_id == CAMERA_1) {
-		if(slave_info->sensor_name && !strncmp(slave_info->sensor_name, "imx179", strlen("imx179"))){//Only imx179 need to match with PCB
+		if(!strncmp(slave_info->sensor_name, "imx179", strlen("imx179"))){//Only imx179 need to match with PCB
 			if( g_pcb_version >= 'B' && g_pcb_version <= 'I' && !strcmp(slave_info->sensor_name, "imx179_4lane")){
 				pr_err("pcb match success  pcb_version=%c  sensor = %s\n", g_pcb_version, slave_info->sensor_name);
 			}
