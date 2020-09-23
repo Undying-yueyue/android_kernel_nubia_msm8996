@@ -1740,10 +1740,11 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 			if (twm_en) {
 				pr_info("TWM Enabled skip backlight update\n");
 			} else {
-		     	if(!camera_lcd_bkl_handle() || (0 == temp)) //ZTEMT: added by nubia camera for front camera flash 
+		     	if(!camera_lcd_bkl_handle() || (0 == temp)) { //ZTEMT: added by nubia camera for front camera flash 
 				pdata->set_backlight(pdata, temp);
 				mfd->bl_level = bkl_lvl;
 				mfd->bl_level_scaled = temp;
+				}
 			}
 		}
 		if (ad_bl_notify_needed)
