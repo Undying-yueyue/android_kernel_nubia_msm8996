@@ -1242,6 +1242,12 @@ static const REG_DMN_FREQ_BAND regDmn2Ghz11gTurboFreq[] = {
 };
 #endif /* ATH_REMOVE_2G_TURBO_RD_TABLE */
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshift-count-negative"
+#pragma clang diagnostic ignored "-Wshift-count-overflow"
+#endif
+
 static const REG_DOMAIN ahCmnRegDomains[] = {
 
 	{DEBUG_REG_DMN, FCC, DFS_FCC3, NO_PSCAN, NO_REQ,
