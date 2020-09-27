@@ -348,9 +348,9 @@ __limProcessChannelSwitchActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
 
         if (psessionEntry->htSupportedChannelWidthSet) {
             if ((pChannelSwitchFrame->sec_chan_offset_ele.
-                 secondaryChannelOffset == PHY_DOUBLE_CHANNEL_LOW_PRIMARY) ||
+                 secondaryChannelOffset = PHY_DOUBLE_CHANNEL_LOW_PRIMARY) ||
                 (pChannelSwitchFrame->sec_chan_offset_ele.
-                 secondaryChannelOffset == PHY_DOUBLE_CHANNEL_HIGH_PRIMARY)) {
+                 secondaryChannelOffset = PHY_DOUBLE_CHANNEL_HIGH_PRIMARY)) {
                 psessionEntry->gLimChannelSwitch.state =
                         eLIM_CHANNEL_SWITCH_PRIMARY_AND_SECONDARY;
                 psessionEntry->gLimChannelSwitch.secondarySubBand =
@@ -1083,7 +1083,7 @@ __limProcessDelTsReq(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession pse
     tsinfo = delts.wmeTspecPresent ? &delts.tspec.tsinfo : &delts.tsinfo;
 
     // if no Admit Control, ignore the request
-    if ((tsinfo->traffic.accessPolicy == SIR_MAC_ACCESSPOLICY_EDCA))
+    if (tsinfo->traffic.accessPolicy == SIR_MAC_ACCESSPOLICY_EDCA)
     {
 
         if (upToAc(tsinfo->traffic.userPrio) >= MAX_NUM_AC)

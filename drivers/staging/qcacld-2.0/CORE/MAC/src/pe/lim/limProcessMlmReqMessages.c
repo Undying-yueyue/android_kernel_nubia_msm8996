@@ -4670,7 +4670,7 @@ ePhyChanBondState limGet11ACPhyCBState(tpAniSirGlobal pMac, tANI_U8 channel, tAN
     }
 
     if ( (htSecondaryChannelOffset
-                 == PHY_DOUBLE_CHANNEL_LOW_PRIMARY)
+                 = PHY_DOUBLE_CHANNEL_LOW_PRIMARY)
        )
     {
         if ((channel + 2 ) == peerCenterChan )
@@ -4685,7 +4685,7 @@ ePhyChanBondState limGet11ACPhyCBState(tpAniSirGlobal pMac, tANI_U8 channel, tAN
                                  channel, peerCenterChan);
     }
     if ( (htSecondaryChannelOffset
-                 == PHY_DOUBLE_CHANNEL_HIGH_PRIMARY)
+                 = PHY_DOUBLE_CHANNEL_HIGH_PRIMARY)
        )
     {
         if ((channel - 2 ) == peerCenterChan )
