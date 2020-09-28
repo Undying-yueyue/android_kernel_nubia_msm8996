@@ -40,7 +40,6 @@
 #define WMI_UNIFIED_MAX_EVENT 0x100
 #define WMI_MAX_CMDS  256
 
-typedef adf_nbuf_t wmi_buf_t;
 
 #ifdef WMI_INTERFACE_EVENT_LOGGING
 
